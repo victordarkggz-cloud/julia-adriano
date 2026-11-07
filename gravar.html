@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Saudação e foto</title>
+<style>
+:root{color-scheme:dark;--bg:#05070d;--fg:#f6f7fb;--muted:#aab2c5;--bar:#10141f;--line:#10141f;--accent:#ff7a1a;--rec:#2f9bff}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,sans-serif;line-height:1.5;padding:24px 16px}
+main{max-width:640px;margin:0 auto}
+h1{font-size:1.6rem;margin:0 0 8px}
+h2{font-size:1rem;margin:0 0 4px;color:var(--muted);font-weight:500}
+p{margin:0 0 12px}
+.nota{color:var(--muted);margin-bottom:20px}
+section{padding:16px;background:var(--bar);border:1px solid var(--line);border-radius:12px;margin-bottom:16px}
+.frase{font-size:1.2rem}
+.acoes{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:12px}
+button{padding:12px 20px;border-radius:24px;border:0;background:var(--accent);color:#070a12;font-size:16px;font-weight:700;cursor:pointer}
+#marcar{display:block;max-width:100%;max-height:70vh;margin-bottom:12px;cursor:crosshair}
+button.gravando{background:var(--rec)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.tempo{font-variant-numeric:tabular-nums}
+audio{width:100%;margin-bottom:12px}
+input[type=file]{max-width:100%;font-size:16px;margin-bottom:12px}
+.status{min-height:1.5em;margin:0}
+a{color:inherit}
+</style>
+</head>
+<body>
+<main>
+  <h1>Saudação e foto</h1>
+  <p class="nota">Grave a frase de abertura, ouça e salve, e escolha a foto do avatar. <a href="/">Abrir o site</a></p>
+
+  <section class="fala" data-nome="saudacao">
+    <h2>Quando o site abre</h2>
+    <p class="frase">Júlia Patetona, Adriano Patetão.</p>
+    <div class="acoes"><button class="gravar" type="button">Gravar</button><span class="tempo">0:00</span></div>
+    <audio controls hidden></audio>
+    <div class="acoes"><button class="salvar" type="button" hidden>Salvar gravação</button></div>
+    <p class="status" role="status"></p>
+  </section>
+
+  <section>
+    <h2><label for="foto">Foto do avatar</label></h2>
+    <input id="foto" type="file" accept="image/png,image/jpeg,image/webp">
+    <img id="marcar" alt="Sua foto: clique no meio da boca" hidden>
+    <p id="status-foto" class="status" role="status"></p>
+  </section>
+</main>
+
+<script>
+async function enviar(nome, arquivo) {
+  let r;
+  try {
+    r = await fetch('/salvar/' + nome, {
+      method: 'POST',
+      headers: { 'Content-Type': arquivo.type },
+      body: arquivo,
+    });
+  } catch (e) {
+    throw new Error('o servidor do site não está ligado.');
+  }
+  const dados = await r.json();
+  if (!r.ok) throw new Error(dados.erro);
+}
+
+document.querySelectorAll('.fala').forEach(fala => {
+  const gravar = fala.querySelector('.gravar');
+  const salvar = fala.querySelector('.salvar');
+  const tempo = fala.querySelector('.tempo');
+  const previa = fala.querySelector('audio');
+  const status = fala.querySelector('.status');
+  let gravador, gravacao, relogio;
+
+  async function comecar() {
+    let microfone;
+    try {
+      // Os filtros automáticos do navegador podem cortar pedaços da voz, então ficam desligados.
+      microfone = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      });
+    } catch (e) {
+      status.textContent = 'Não consegui usar o microfone. Libere o acesso no navegador e tente de novo.';
+      return;
+    }
+    const partes = [];
+    let segundos = 0;
+    tempo.textContent = '0:00';
+    previa.hidden = salvar.hidden = true;
+    status.textContent = 'Gravando…';
+    gravador = new MediaRecorder(microfone, { audioBitsPerSecond: 128000 });
+    gravador.ondataavailable = e => partes.push(e.data);
+    gravador.onstop = () => {
+      microfone.getTracks().forEach(t => t.stop());
+      clearInterval(relogio);
+      gravar.textContent = 'Gravar de novo';
+      gravar.classList.remove('gravando');
+      gravacao = new Blob(partes, { type: gravador.mimeType });
+      if (!gravacao.size) {
+        status.textContent = 'A gravação ficou vazia. Confira o microfone e tente de novo.';
+        return;
+      }
+      previa.src = URL.createObjectURL(gravacao);
+      previa.hidden = salvar.hidden = false;
+      status.textContent = 'Ouça. Se estiver boa, clique em "Salvar gravação".';
+    };
+    gravador.start();
+    relogio = setInterval(() => {
+      segundos++;
+      tempo.textContent = Math.floor(segundos / 60) + ':' + String(segundos % 60).padStart(2, '0');
+    }, 1000);
+    gravar.textContent = 'Parar';
+    gravar.classList.add('gravando');
+  }
+
+  gravar.addEventListener('click', () => {
+    if (gravador && gravador.state === 'recording') gravador.stop();
+    else comecar();
+  });
+
+  salvar.addEventListener('click', async () => {
+    gravar.disabled = salvar.disabled = true;
+    status.textContent = 'Salvando…';
+    try {
+      await enviar(fala.dataset.nome, gravacao);
+      salvar.hidden = true;
+      status.textContent = 'Salvo. O site já toca esta gravação.';
+    } catch (e) {
+      status.textContent = 'Não deu certo: ' + e.message;
+    }
+    gravar.disabled = salvar.disabled = false;
+  });
+});
+
+document.getElementById('foto').addEventListener('change', async e => {
+  const status = document.getElementById('status-foto');
+  const arquivo = e.target.files[0];
+  if (!arquivo) return;
+  status.textContent = 'Salvando…';
+  try {
+    await enviar('avatar', arquivo);
+    const marcar = document.getElementById('marcar');
+    marcar.src = URL.createObjectURL(arquivo);
+    marcar.hidden = false;
+    status.textContent = 'Foto salva. Agora clique no meio da boca, para o avatar mexer no lugar certo.';
+  } catch (erro) {
+    status.textContent = 'Não deu certo: ' + erro.message;
+  }
+});
+
+document.getElementById('marcar').addEventListener('click', async e => {
+  const status = document.getElementById('status-foto');
+  const caixa = e.target.getBoundingClientRect();
+  const posicao = JSON.stringify({
+    x: (e.clientX - caixa.left) / caixa.width,
+    y: (e.clientY - caixa.top) / caixa.height,
+  });
+  try {
+    await enviar('boca', new Blob([posicao], { type: 'application/json' }));
+    status.innerHTML = 'Pronto. Se errou o lugar, é só clicar de novo. <a href="/">Abrir o site</a>';
+  } catch (erro) {
+    status.textContent = 'Não deu certo: ' + erro.message;
+  }
+});
+</script>
+</body>
+</html>

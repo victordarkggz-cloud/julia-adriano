@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Júlia e Adriano</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#05070d;--fg:#f6f7fb;--muted:#aab2c5;--bar:#10141f;--chip:#1c2333;--laranja:#ff7a1a;--azul:#2f9bff;--tinta:#070a12}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,sans-serif;overflow:hidden}
+body{display:flex;flex-direction:column;height:100dvh}
+#palco{position:relative;flex:1;min-height:0;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;overflow:hidden}
+.clarao{position:absolute;top:0;bottom:0;width:50%;opacity:0;pointer-events:none}
+#clarao-esq{left:0;background:var(--laranja)}
+#clarao-dir{right:0;background:var(--azul)}
+h1{display:contents;font:400 1em 'Anton',Impact,'Arial Narrow',sans-serif}
+/* --a é a largura do avatar; o nome ocupa o que sobra em cada lado. */
+#palco{--a:calc((100dvh - 150px) * .8)}
+.nome{position:relative;z-index:1;min-width:0;font-size:min(calc((100vw - var(--a)) / 2 / 4.3),150px);line-height:.98;letter-spacing:-.01em;text-transform:uppercase;transform:skewX(-8deg);padding:0 16px}
+#julia{color:var(--laranja);text-align:right}
+#adriano{color:var(--azul);text-align:left;grid-column:3}
+#raios{position:absolute;inset:0;z-index:2;width:100%;height:100%;pointer-events:none}
+#caixa{position:relative;z-index:3;grid-column:2;grid-row:1;width:var(--a);height:100%;min-height:0}
+#avatar{display:block;width:100%;height:100%;object-fit:contain;transform-origin:50% 80%;-webkit-mask-image:radial-gradient(ellipse 50% 54% at 50% 46%,#000 68%,transparent 100%);mask-image:radial-gradient(ellipse 50% 54% at 50% 46%,#000 68%,transparent 100%)}
+#sem-foto{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+#sem-foto a{padding:16px 24px;background:var(--chip);color:var(--fg);font-weight:600;border-radius:999px}
+#gravacoes{display:flex;gap:8px;overflow-x:auto;padding:8px 16px 0;background:var(--bar);scrollbar-width:none}
+#gravacoes:empty{display:none}
+#gravacoes button{flex:none;background:var(--chip);color:var(--fg);padding:10px 16px;font-size:15px}
+#gravacoes button[aria-pressed=true]{background:var(--azul);color:var(--tinta)}
+#barra{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:12px 16px;background:var(--bar)}
+#status{flex:1;min-width:120px;color:var(--muted)}
+#tempo{font-variant-numeric:tabular-nums;font-size:18px}
+#barra a{color:var(--muted);font-size:15px}
+#ouvir,#enviar{background:var(--azul)}
+button{padding:14px 28px;border-radius:999px;border:0;background:var(--laranja);color:var(--tinta);font-size:17px;font-weight:700;cursor:pointer;transition:transform .12s}
+button:hover{transform:scale(1.04)}
+button:active{transform:scale(.96)}
+button:focus-visible,a:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+button:disabled{opacity:.5;cursor:not-allowed}
+#gravar.gravando{background:var(--azul)}
+#inicio{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+#inicio button{font-size:24px;padding:20px 44px}
+@media (max-aspect-ratio:4/3){
+  #palco{display:flex;flex-direction:column;align-items:stretch}
+  h1{display:block;position:relative;z-index:4;margin:0;padding:12px 16px 0;transform:skewX(-8deg)}
+  .nome{display:block;font-size:min(13vw,11dvh);line-height:1.02;padding:0;text-align:left;transform:none}
+  #julia{text-align:left}
+  #adriano{text-align:right}
+  #caixa{flex:1;width:auto}
+  #avatar{width:auto;aspect-ratio:4/5;max-width:100%;margin:0 auto}
+}
+@media (max-width:560px){#barra a{flex-basis:100%}}
+@media (prefers-reduced-motion:reduce){button{transition:none}button:hover,button:active{transform:none}}
+</style>
+</head>
+<body>
+
+<div id="inicio"><button id="comecar" type="button">&#9654;&#xFE0E; Play</button></div>
+
+<div id="palco">
+  <div id="clarao-esq" class="clarao"></div>
+  <div id="clarao-dir" class="clarao"></div>
+  <h1><span class="nome" id="julia">Júlia Patetona</span> <span class="nome" id="adriano">Adriano Patetão</span></h1>
+  <canvas id="raios"></canvas>
+  <div id="caixa">
+    <canvas id="avatar" width="800" height="1000" role="img" aria-label="Avatar"></canvas>
+    <div id="sem-foto" hidden><a href="gravar.html">Colocar minha foto</a></div>
+  </div>
+</div>
+
+<div id="gravacoes" aria-label="Gravações"></div>
+<div id="barra">
+  <button id="ouvir" type="button">&#9654;&#xFE0E; Ouvir de novo</button>
+  <button id="gravar" type="button">Gravar</button>
+  <span id="tempo">0:00</span>
+  <span id="status" role="status"></span>
+  <button id="enviar" type="button" hidden>Enviar gravação</button>
+  <button id="repetir" type="button" hidden>Tentar salvar de novo</button>
+  <a id="trocar" href="gravar.html">Trocar foto e saudação</a>
+</div>
+
+<script>
+const SAUDACAO = 'Júlia Patetona, Adriano Patetão.';
+const FORMATOS = ['webm', 'm4a', 'ogg', 'mp3'];
+// Publicado não há servidor para guardar gravações: elas ficam na página e saem por "Enviar".
+const PUBLICADO = !['localhost', '127.0.0.1'].includes(location.hostname);
+const BOCA_PADRAO = { x: 0.29, y: 0.437 };
+const LARANJA = '#ff7a1a', AZUL = '#2f9bff';
+const reduzir = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const $ = id => document.getElementById(id);
+const avatar = $('avatar'), raios = $('raios');
+const cAvatar = avatar.getContext('2d'), cRaios = raios.getContext('2d');
+const gravar = $('gravar'), repetir = $('repetir'), tempo = $('tempo'), status = $('status'), lista = $('gravacoes');
+const L = avatar.width, A = avatar.height;
+
+// ---------- Volume da voz: é ele que comanda a boca, a cabeça e os raios ----------
+let audioCtx, analisador, amostras, falandoTexto = false, nivel = 0;
+
+function iniciarAudio() {
+  if (!audioCtx) {
+    audioCtx = new AudioContext();
+    analisador = audioCtx.createAnalyser();
+    analisador.fftSize = 1024;
+    amostras = new Float32Array(analisador.fftSize);
+  }
+  audioCtx.resume();
+}
+
+function ligarElemento(elemento) {
+  iniciarAudio();
+  const fonte = audioCtx.createMediaElementSource(elemento);
+  fonte.connect(analisador);
+  fonte.connect(audioCtx.destination);
+  return fonte;
+}
+
+function lerNivel(t) {
+  let alvo = 0;
+  if (analisador) {
+    analisador.getFloatTimeDomainData(amostras);
+    let soma = 0;
+    for (const v of amostras) soma += v * v;
+    // Abaixo de 0.012 é ruído do ambiente; acima de 0.2 já é voz forte.
+    alvo = Math.min(1, Math.max(0, (Math.sqrt(soma / amostras.length) - 0.012) / 0.19)) ** 0.7;
+  }
+  // A voz do navegador não passa pelo analisador, então o ritmo é simulado.
+  if (falandoTexto) alvo = 0.45 + 0.35 * Math.sin(t / 70) * Math.sin(t / 190);
+  nivel += (alvo - nivel) * (alvo > nivel ? 0.6 : 0.18);
+  return nivel;
+}
+
+// ---------- Avatar: a parte de baixo do rosto desce para a boca abrir ----------
+let base, queixo, boca;
+
+function desenharCorte(foto, bocaFoto) {
+  const fw = foto.naturalWidth || foto.width, fh = foto.naturalHeight || foto.height;
+  // Corte 4:5 ao redor da boca, o que também tira barras de print de celular.
+  const corteL = Math.min(fw, fh * 0.8), corteA = corteL * 1.25;
+  const sx = Math.max(0, Math.min(fw - corteL, bocaFoto.x * fw - corteL / 2));
+  const sy = Math.max(0, Math.min(fh - corteA, bocaFoto.y * fh - corteA * 0.55));
+  boca = {
+    x: (bocaFoto.x * fw - sx) / corteL * L,
+    y: (bocaFoto.y * fh - sy) / corteA * A,
+  };
+  base = document.createElement('canvas');
+  base.width = L; base.height = A;
+  base.getContext('2d').drawImage(foto, sx, sy, corteL, corteA, 0, 0, L, A);
+
+  queixo = document.createElement('canvas');
+  queixo.width = L; queixo.height = A;
+  const c = queixo.getContext('2d');
+  c.drawImage(base, 0, 0);
+  c.globalCompositeOperation = 'destination-in';
+  const raio = L * 0.2;
+  const g = c.createRadialGradient(boca.x, boca.y + raio * 0.45, raio * 0.55, boca.x, boca.y + raio * 0.45, raio);
+  g.addColorStop(0, '#000');
+  g.addColorStop(1, 'transparent');
+  c.fillStyle = g;
+  c.fillRect(0, 0, L, A);
+  c.globalCompositeOperation = 'destination-out';
+  c.fillRect(0, 0, L, boca.y);
+}
+
+function desenharAvatar(n, t) {
+  if (!base) return;
+  const abertura = n * A * 0.032;
+  cAvatar.clearRect(0, 0, L, A);
+  cAvatar.drawImage(base, 0, 0);
+  if (abertura > 0.5) {
+    cAvatar.fillStyle = '#1d0506';
+    cAvatar.beginPath();
+    cAvatar.ellipse(boca.x, boca.y + abertura * 0.45, L * 0.07, abertura * 0.75, 0, 0, Math.PI * 2);
+    cAvatar.fill();
+    cAvatar.drawImage(queixo, 0, abertura);
+  }
+  if (!reduzir) {
+    const treme = n > 0.75 ? (n - 0.75) * 14 : 0;
+    const x = Math.sin(t / 47) * treme, y = -n * 14 + Math.cos(t / 39) * treme;
+    const giro = Math.sin(t / 240) * n * 2.4;
+    avatar.style.transform = `translate(${x}px,${y}px) rotate(${giro}deg) scale(${1 + n * 0.045})`;
+  }
+}
+
+// ---------- Raios: um lado laranja, outro azul, como a luz da foto ----------
+let vivos = [], ultimoRaio = 0, ultimoClarao = 0, lado = 0;
+
+function ajustarRaios() {
+  const escala = Math.min(devicePixelRatio || 1, 2);
+  raios.width = raios.clientWidth * escala;
+  raios.height = raios.clientHeight * escala;
+  cRaios.setTransform(escala, 0, 0, escala, 0, 0);
+}
+
+function zigue(x1, y1, x2, y2, desvio, pontos = [[x1, y1]]) {
+  if (desvio < 6) {
+    pontos.push([x2, y2]);
+    return pontos;
+  }
+  const mx = (x1 + x2) / 2 + (Math.random() - 0.5) * desvio;
+  const my = (y1 + y2) / 2 + (Math.random() - 0.5) * desvio;
+  zigue(x1, y1, mx, my, desvio / 2, pontos);
+  zigue(mx, my, x2, y2, desvio / 2, pontos);
+  return pontos;
+}
+
+function criarRaio(n, t) {
+  const palco = raios.getBoundingClientRect(), caixa = $('caixa').getBoundingClientRect();
+  const esquerda = lado++ % 2 === 0;
+  const x1 = caixa.left - palco.left + caixa.width * (esquerda ? 0.24 : 0.76);
+  const y1 = caixa.top - palco.top + caixa.height * (0.15 + Math.random() * 0.55);
+  const x2 = esquerda ? 0 : palco.width;
+  const y2 = Math.random() * palco.height;
+  const distancia = Math.hypot(x2 - x1, y2 - y1);
+  const galhos = [];
+  const tronco = zigue(x1, y1, x2, y2, distancia * 0.28);
+  for (let i = 0; i < 1 + n * 3; i++) {
+    const [gx, gy] = tronco[Math.floor(Math.random() * tronco.length)];
+    galhos.push(zigue(gx, gy, gx + (esquerda ? -1 : 1) * (40 + Math.random() * 160), gy + (Math.random() - 0.5) * 180, 60));
+  }
+  vivos.push({ tronco, galhos, cor: esquerda ? LARANJA : AZUL, nasceu: t, vida: 110 + Math.random() * 140, forca: n });
+  // No máximo 3 clarões por segundo: acima disso a luz piscando pode fazer mal a quem tem fotossensibilidade.
+  if (!reduzir && n > 0.45 && t - ultimoClarao > 350) {
+    ultimoClarao = t;
+    const clarao = $(esquerda ? 'clarao-esq' : 'clarao-dir');
+    clarao.animate([{ opacity: 0.1 + n * 0.14 }, { opacity: 0 }], { duration: 240, easing: 'ease-out' });
+  }
+}
+
+function tracar(pontos) {
+  cRaios.beginPath();
+  pontos.forEach(([x, y], i) => i ? cRaios.lineTo(x, y) : cRaios.moveTo(x, y));
+  cRaios.stroke();
+}
+
+function desenharRaios(n, t) {
+  const intervalo = reduzir ? 500 : 190 - n * 150;
+  if (n > 0.08 && t - ultimoRaio > intervalo && vivos.length < 8) {
+    ultimoRaio = t;
+    criarRaio(n, t);
+  }
+  cRaios.clearRect(0, 0, raios.clientWidth, raios.clientHeight);
+  vivos = vivos.filter(r => t - r.nasceu < r.vida);
+  cRaios.lineCap = cRaios.lineJoin = 'round';
+  for (const r of vivos) {
+    cRaios.globalAlpha = 1 - (t - r.nasceu) / r.vida;
+    cRaios.shadowColor = r.cor;
+    cRaios.shadowBlur = 24;
+    cRaios.strokeStyle = r.cor;
+    cRaios.lineWidth = 4 + r.forca * 5;
+    tracar(r.tronco);
+    cRaios.lineWidth = 2;
+    r.galhos.forEach(tracar);
+    cRaios.shadowBlur = 0;
+    cRaios.strokeStyle = '#fff';
+    cRaios.lineWidth = 1.5 + r.forca * 1.5;
+    tracar(r.tronco);
+  }
+  cRaios.globalAlpha = 1;
+}
+
+function quadro(t) {
+  const n = lerNivel(t);
+  desenharAvatar(n, t);
+  desenharRaios(n, t);
+  requestAnimationFrame(quadro);
+}
+
+// ---------- Saudação ----------
+let saudacao, fonteSaudacao;
+
+function calar() {
+  if (saudacao) saudacao.pause();
+  if (fonteSaudacao) fonteSaudacao.disconnect();
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  falandoTexto = false;
+}
+
+function falarTexto() {
+  if (!('speechSynthesis' in window)) return;
+  const u = new SpeechSynthesisUtterance(SAUDACAO);
+  u.lang = 'pt-BR';
+  u.onend = u.onerror = () => { falandoTexto = false; };
+  falandoTexto = true;
+  speechSynthesis.speak(u);
+}
+
+function falarSaudacao() {
+  let usouTexto = false;
+  const reserva = () => { if (!usouTexto) { usouTexto = true; falarTexto(); } };
+  saudacao = new Audio();
+  // O navegador tenta cada formato em ordem; o erro da última fonte significa que nenhum existe.
+  FORMATOS.forEach((ext, i) => {
+    const fonte = document.createElement('source');
+    fonte.src = `audio/saudacao.${ext}`;
+    if (i === FORMATOS.length - 1) fonte.onerror = reserva;
+    saudacao.append(fonte);
+  });
+  fonteSaudacao = ligarElemento(saudacao);
+  saudacao.play().catch(reserva);
+}
+
+// ---------- Gravações salvas ----------
+let tocando;
+
+function pararGravacaoTocando() {
+  if (!tocando) return;
+  tocando.audio.pause();
+  tocando.fonte.disconnect();
+  tocando.botao.setAttribute('aria-pressed', 'false');
+  tocando = null;
+}
+
+function rotulo(nome) {
+  const m = nome.match(/^\d{4}(\d\d)(\d\d)-(\d\d)(\d\d)(\d\d)/);
+  return m ? `${m[2]}/${m[1]} às ${m[3]}:${m[4]}:${m[5]}` : nome;
+}
+
+function alternar(botao, url) {
+  const mesma = tocando && tocando.botao === botao;
+  calar();
+  pararGravacaoTocando();
+  if (mesma) return;
+  const audio = new Audio(url);
+  const fonte = ligarElemento(audio);
+  tocando = { audio, fonte, botao };
+  botao.setAttribute('aria-pressed', 'true');
+  audio.onended = pararGravacaoTocando;
+  audio.play().catch(() => {
+    pararGravacaoTocando();
+    status.textContent = 'Não consegui tocar esta gravação.';
+  });
+}
+
+function botaoGravacao(texto, url) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = texto;
+  b.setAttribute('aria-pressed', 'false');
+  b.onclick = () => alternar(b, url);
+  return b;
+}
+
+async function mostrarGravacoes() {
+  const r = await fetch('/gravacoes');
+  if (!r.ok) throw new Error('lista indisponível');
+  const nomes = await r.json();
+  lista.replaceChildren(...nomes.map(nome => botaoGravacao(rotulo(nome), 'gravacoes/' + encodeURIComponent(nome))));
+}
+
+// Publicado: a gravação fica só na página até a pessoa enviar pelo app que escolher.
+let ultimaGravacao, contagem = 0;
+
+function guardarNaPagina(gravacao) {
+  const tipo = gravacao.type.split(';')[0];
+  const ext = { 'audio/mp4': 'm4a', 'audio/ogg': 'ogg' }[tipo] || 'webm';
+  ultimaGravacao = new File([gravacao], `resposta.${ext}`, { type: tipo });
+  contagem++;
+  lista.prepend(botaoGravacao(`Gravação ${contagem}`, URL.createObjectURL(gravacao)));
+  $('enviar').hidden = false;
+  status.textContent = 'Gravação pronta.';
+}
+
+async function enviarGravacao() {
+  if (navigator.canShare && navigator.canShare({ files: [ultimaGravacao] })) {
+    try {
+      await navigator.share({ files: [ultimaGravacao] });
+    } catch (e) {
+      // Cancelar o compartilhamento não é erro: a gravação continua na página.
+      if (e.name !== 'AbortError') status.textContent = 'Não consegui enviar. Tente de novo.';
+    }
+    return;
+  }
+  // Computador sem compartilhamento: baixa o arquivo para enviar por onde quiser.
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(ultimaGravacao);
+  link.download = ultimaGravacao.name;
+  link.click();
+  URL.revokeObjectURL(link.href);
+  status.textContent = 'Arquivo baixado. Agora é só mandar pelo WhatsApp.';
+}
+
+// ---------- Gravar ----------
+let gravador, relogio, pendente, fonteMicrofone;
+
+async function salvar() {
+  gravar.disabled = true;
+  repetir.hidden = true;
+  status.textContent = 'Salvando…';
+  try {
+    const r = await fetch('/gravacao', {
+      method: 'POST',
+      headers: { 'Content-Type': pendente.type },
+      body: pendente,
+    });
+    if (!r.ok) throw new Error((await r.json()).erro);
+    pendente = null;
+    status.textContent = 'Gravação salva.';
+    await mostrarGravacoes();
+  } catch (e) {
+    if (pendente) {
+      status.textContent = 'Não salvou: ' + e.message;
+      repetir.hidden = false;
+    } else {
+      status.textContent = 'Gravação salva, mas a lista não atualizou. Recarregue a página.';
+    }
+  }
+  gravar.disabled = false;
+}
+
+async function comecarGravacao() {
+  if (pendente && !confirm('A última gravação ainda não foi salva. Descartar e gravar outra?')) return;
+  calar();
+  pararGravacaoTocando();
+  iniciarAudio();
+  let microfone;
+  try {
+    // Os filtros automáticos do navegador podem cortar pedaços da voz, então ficam desligados.
+    microfone = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    });
+  } catch (e) {
+    status.textContent = 'Não consegui usar o microfone. Libere o acesso no navegador e tente de novo.';
+    return;
+  }
+  pendente = null;
+  repetir.hidden = true;
+  // Vai só para o analisador: ligar nas caixas de som causaria microfonia.
+  fonteMicrofone = audioCtx.createMediaStreamSource(microfone);
+  fonteMicrofone.connect(analisador);
+  const partes = [];
+  let segundos = 0;
+  tempo.textContent = '0:00';
+  status.textContent = 'Gravando…';
+  gravador = new MediaRecorder(microfone, { audioBitsPerSecond: 128000 });
+  gravador.ondataavailable = e => partes.push(e.data);
+  gravador.onstop = () => {
+    fonteMicrofone.disconnect();
+    microfone.getTracks().forEach(t => t.stop());
+    clearInterval(relogio);
+    gravar.textContent = 'Gravar';
+    gravar.classList.remove('gravando');
+    const gravacao = new Blob(partes, { type: gravador.mimeType });
+    if (!gravacao.size) {
+      status.textContent = 'A gravação ficou vazia. Confira o microfone e tente de novo.';
+      return;
+    }
+    if (PUBLICADO) return guardarNaPagina(gravacao);
+    pendente = gravacao;
+    salvar();
+  };
+  gravador.start();
+  relogio = setInterval(() => {
+    segundos++;
+    tempo.textContent = Math.floor(segundos / 60) + ':' + String(segundos % 60).padStart(2, '0');
+  }, 1000);
+  gravar.textContent = 'Parar';
+  gravar.classList.add('gravando');
+}
+
+gravar.addEventListener('click', () => {
+  if (gravador && gravador.state === 'recording') gravador.stop();
+  else comecarGravacao();
+});
+repetir.addEventListener('click', salvar);
+$('enviar').addEventListener('click', enviarGravacao);
+
+$('comecar').addEventListener('click', () => {
+  $('inicio').remove();
+  iniciarAudio();
+  falarSaudacao();
+});
+
+$('ouvir').addEventListener('click', () => {
+  calar();
+  pararGravacaoTocando();
+  iniciarAudio();
+  falarSaudacao();
+});
+
+// ---------- Início ----------
+async function carregarFoto() {
+  let posicao = BOCA_PADRAO;
+  try {
+    const r = await fetch('avatar.json', { cache: 'no-store' });
+    if (r.ok) posicao = await r.json();
+  } catch (e) { /* sem marcação salva: fica a posição padrão */ }
+  const foto = new Image();
+  foto.onload = () => desenharCorte(foto, posicao);
+  foto.onerror = () => {
+    avatar.hidden = true;
+    $('sem-foto').hidden = false;
+  };
+  foto.src = 'avatar.png?' + Date.now();
+}
+
+addEventListener('resize', ajustarRaios);
+ajustarRaios();
+carregarFoto();
+if (PUBLICADO) $('trocar').remove();
+else mostrarGravacoes().catch(() => { status.textContent = 'Não consegui carregar as gravações.'; });
+requestAnimationFrame(quadro);
+</script>
+</body>
+</html>

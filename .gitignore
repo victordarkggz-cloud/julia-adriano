@@ -1,0 +1,5 @@
+gravacoes/
+.claude/
+.taste-skill/
+__pycache__/
+*.tmp
